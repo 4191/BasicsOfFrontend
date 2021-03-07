@@ -26,6 +26,9 @@
 
 - react event 不是原生的，是 SyntheticEvent 合成事件对象
 
+- react 16 合成事件图示：
+  ![](img/res/md-2021-03-08-03-34-19.png)
+
 #
 
 #
