@@ -207,16 +207,108 @@ module.exports={
 
 - 与IgnorePlugin①的区别：IgnorePlugin是直接不引入，代码中没有，需要的东西再单独引入，提高构建速度的同时，可以减小产出文件的体积； noParse 引入，但不进行babel等编译打包操作
 ```
+- #### 多进程优势
+    1. 项目较大时，开启多进程可以显著提高打包速度
+    2. 项目较小，开启多进程会降低速度（进程启动、通信、销毁会消耗性能）
+    3. 按需使用
+1. happyPack 多进程打包
+- js是单线程的，用以开启多进程
+- 提高构建速度，尤其是多核cpu的机器
+```
+1. 安装：npm i happypack -D
+2. 引入：const HappyPack = require('happypack)
+3. 改变rules写法,将xx文件的处理交给id为babel的happypack实例处理：rules.use:['happypack/loader?id=babel']
+4. 创建happypack实例：plugin: new HappyPack({
+    id:'babel', // 唯一标识
+    loaders:['babel-loader?cacheDirectory'] // 原有正常的babel配置
+})
+```
 
-4. happyPack
-5. ParallelUglifyPlugin
-6. 自动刷新
+5. ParallelUglifyPlugin  多进程压缩js // 只放在生产环境即可
+- webpack 内置uglify工具压缩js，但因js是单线程，需要paralleUglifyPlugin开启多进程，提高压缩更快（和happyPack同理）
+```
+1. 安装：npm i webpack-parallel-uglify-plugin -D
+2. 引入：const ParallelUglifyPlugin = require('webpack-parallel-uglify-plugin)
+3. 创建实例：plugin: new ParallelUglifyPlugin({
+    uglifyJS:{
+        outpout:{
+            beautify:false, // 不要美化，用最紧凑的输出
+            comments:false, // 删除所有注释
+        },
+        compress:{
+            drop_console:true, // 删除所有console,可以兼容ie
+            collapse_vars:true, // 内嵌只用到一次的变量
+            reduce_vars:true,// 提取出现多次但没有定义成变量的静态值
+        }
+    }
+})
+```
+
+6. 自动刷新 
+module.export={
+    watch:true, // 开启监听，webpack-dev-server自动开启刷新浏览器。 默认为false。如果使用了webpack-dev-server，则不需要再配，会自动开启刷新浏览器
+    watchOptions:{
+        ignored:/node_modules/, // 忽略监听的内容
+        aggregateTimeout：300， // 默认300，监听修改后300ms后触发刷新
+        poll：1000, // 默认每搁1000毫秒询问一次指定文件有没有发生变化
+    }
+}
+
 7. 热更新
-8. DllPugin
+- 自动刷新：整个网页全部刷新，速度较慢；状态会丢失
+- 热更新：新代码生效，网页不刷新，状态不丢失。会消耗性能。
+```
+// 代码地址：frame-project-interview\webpack-demo\src\index.js
+1. 引用：const HotModuleReplacementPlugin = require('webpack/lib/HotModuleReplacementPlugin')
+2. entry配置：{
+    index:['wepack-dev-server/client?http://localhost:8080/','webpack/hot/dev-server',path.join(srcPath,'index.js')],
+    other:path.join(srcPath,'other.js')
+}
+3. 创建实例：plugin: new HotModuleReplacementPlugin( )
+4. devServer:{
+    hot:true 
+}
+5. import { sum } from './math' 
+
+// 增加，开启热更新之后的代码逻辑,只有下面被匹配到的内容才会走热更新
+if (module.hot) {
+    module.hot.accept(['./math'], () => {
+        const sumRes = sum(10, 30)
+        console.log('sumRes in hot', sumRes)
+    })
+}
+```
+
+
+8. DllPugin 动态链接库插件（webpack已内置支持）
+- DllPlugin：打包出dll.js(index中引用)\manifestt.json(webpack plugin创建实例时引用)文件
+- DllReferencePlugin：使用dll文件
+```
+1. 配置webpack： // D:\BasicsOfFrontend\frame-project-interview\webpack-dll-demo\build\webpack.dll.js
+2. 打包
+3. 引用：
+    1. index中引入<script src="./xx.dll.js"></script>
+    2. webpack js rule；exclude: /node_modules/
+    3. 实例初始化plugins:[new DllReferencePlugin({
+            // 描述 react 动态链接库的文件内容
+            manifest: require(path.join(distPath, 'react.manifest.json')),
+        }),]
+```
+   
 ## 二、 优化产出代码- 产品性能
+- 体积更小
+- 合理分包，不重复加载
+- 速度更快，内存使用更小
 
 # 优化产出代码
-
+- 小图片（小于5kb）使用base64编码产出
+- bundle加hash，缓存
+- 懒加载
+- 提取公共代码
+- IngorePlugin // 忽略多语言等
+- 使用cdn加速：1.配置output.publicPath:'http://cdn.xxx.com'; (给所有静态文件加前缀)；2. 将本地静态文件上传到所购买的cdn服务器上； 注：rules.use.publicPath，也可以用于图片
+- 使用production
+- 使用Scope Hosting
 # 构建流程概述
 
 # babel
